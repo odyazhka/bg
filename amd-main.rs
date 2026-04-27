@@ -1,7 +1,9 @@
-// ИСХОДНЫЙ КОД ДЛЯ AMD
+//ИСХОДНЫЙ КОД ДЛЯ AMD
+use lazy_static::lazy_static;
+use std::env;
+use std::path::PathBuf;
 use std::fs;
 use std::io::{self, Write};
-use std::path::PathBuf;
 use crossterm::{
     cursor,
     event::{self, KeyCode, KeyEvent},
@@ -10,63 +12,46 @@ use crossterm::{
     terminal::{self, ClearType},
 };
 
+const BRIGHT_PATH: &str = "/sys/class/backlight/amdgpu_bl0/brightness";
+const MAX_BRIGHT_PATH: &str = "/sys/class/backlight/amdgpu_bl0/max_brightness";
+//const SAVE_FILE: &str = "/home/wan/hello_void/target/x86_64-unknown-linux-musl/release/.bg";
+
+lazy_static! {
+    // Эта переменная вычислится один раз при первом вызове
+    static ref SAVE_FILE: PathBuf = {
+        let home = env::var("HOME").unwrap_or_else(|_| ".".into());
+        let mut path = PathBuf::from(home);
+        path.push(".bg");
+        path
+    };
+}
+
 struct Config {
     max_bright: u32,
     step_large: u32,
     step_small: u32,
-    bright_path: PathBuf,
-}
-
-// Функция для динамического поиска интерфейса управления яркостью AMD
-fn find_amd_backlight_dir() -> Option<PathBuf> {
-    let entries = fs::read_dir("/sys/class/backlight/").ok()?;
-    for entry in entries.flatten() {
-        let file_name = entry.file_name();
-        let name = file_name.to_string_lossy();
-        // Ищем папку, которая начинается с amdgpu_bl
-        if name.starts_with("amdgpu_bl") {
-            return Some(entry.path());
-        }
-    }
-    None
 }
 
 fn main() -> io::Result<()> {
-    // 1. Ищем путь динамически
-    let base_path = match find_amd_backlight_dir() {
-        Some(path) => path,
-        None => {
-            println!("Ошибка: Устройство управления подсветкой AMD (amdgpu_bl*) не найдено.");
-            return Ok(());
-        }
-    };
 
-    let max_bright_path = base_path.join("max_brightness");
-    let bright_path = base_path.join("brightness");
-
-    // 2. Читаем максимальную яркость
-    let max_bright = fs::read_to_string(&max_bright_path)
+    let max_bright = fs::read_to_string(MAX_BRIGHT_PATH)
         .unwrap_or_else(|_| "255".to_string())
         .trim()
         .parse::<u32>()
         .unwrap_or(255);
 
-    // 3. Настраиваем шаги с защитой от нуля (.max(1))
     let config = Config {
         max_bright,
-        step_large: (max_bright / 20).max(1),    // 5%
-        step_small: (max_bright / 100).max(1),   // 1%
-        bright_path: bright_path.clone(),
+        step_large: max_bright / 20,    // 5%
+        step_small: (max_bright / 100).max(1), // 1%
     };
 
-    // 4. Читаем текущую яркость
-    let mut current = fs::read_to_string(&bright_path)
+    let mut current = fs::read_to_string(BRIGHT_PATH)
         .unwrap_or_else(|_| "128".to_string())
         .trim()
         .parse::<u32>()
         .unwrap_or(128);
 
-    // 5. Запуск интерфейса
     let mut stdout = io::stdout();
     terminal::enable_raw_mode()?;
     execute!(stdout, cursor::Hide, terminal::Clear(ClearType::All))?;
@@ -77,6 +62,7 @@ fn main() -> io::Result<()> {
         if let event::Event::Key(KeyEvent { code, .. }) = event::read()? {
             match code {
                 KeyCode::Up => {
+                    // Если на 1, прыгаем ровно на step_large. Если выше — выравниваем по сетке step_large.
                     let next = if current == 1 { config.step_large } else { current + config.step_large };
                     current = (next / config.step_large * config.step_large).min(config.max_bright);
                 }
@@ -94,24 +80,26 @@ fn main() -> io::Result<()> {
                 _ => {}
             }
 
-            // Записываем в систему (ошибки игнорируются, если нет прав)
-            let _ = fs::write(&config.bright_path, current.to_string());
+            // Записываем в систему
+            let _ = fs::write(BRIGHT_PATH, current.to_string());
+            let _ = fs::write(&*SAVE_FILE, current.to_string());
         }
     }
 
-    // 6. Выход
     execute!(stdout, cursor::Show, terminal::Clear(ClearType::All))?;
     terminal::disable_raw_mode()?;
     Ok(())
 }
 
 fn draw_ui(stdout: &mut io::Stdout, val: u32, cfg: &Config) -> io::Result<()> {
+    // В Rust деление u32 на u32 автоматически дает целое число
     let percent = val * 100 / cfg.max_bright;
     
     let gray_index = (val * 23 / cfg.max_bright) as u8;
     let color_code = 232 + gray_index;
     
-    let text_color = if val >= cfg.max_bright / 2 { Color::Black } else { Color::White };
+    // Текст белый до 50%, выше — черный
+    let text_color = if val <= cfg.max_bright / 2 { Color::White } else { Color::Black };
 
     execute!(
         stdout,
