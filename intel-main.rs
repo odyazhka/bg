@@ -1,3 +1,4 @@
+//ИСХОДНЫЙ КОД ДЛЯ INTEL
 use std::fs;
 use std::io::{self, Write};
 use crossterm::{
