@@ -1,5 +1,5 @@
 # bg
-скрипт для управления яркостью
+программа на Rust для управления яркостью
 
 ## Скриншоты:
 <img width="893" height="1040" alt="изображение" src="https://github.com/user-attachments/assets/69175ffd-b80d-4485-9539-572e32755eae" />
@@ -11,39 +11,24 @@
 
 ## Установка:
 
-#### 1. Убрать ввод пароля для изменения яркости
+#### 1. Скачать файл для amd или intel
 
-Если не интел заменить на intel на amd
-
-```
-sudo mkdir -p /etc/udev/rules.d/
-sudo nano /etc/udev/rules.d/99-backlight.rules
-```
-
-Вставить туда:
-```
-ACTION=="add", SUBSYSTEM=="backlight", KERNEL=="intel_backlight", RUN+="/bin/chmod 666 /sys/class/backlight/intel_backlight/brightness"
-```
-
-Ввести команды в терминале:
+Запустить установщик:
 
 ```
-sudo udevadm control --reload-rules && sudo udevadm trigger
-sudo chmod 666 /sys/class/backlight/intel_backlight/brightness
+sudo ./install.sh
 ```
 
-Проверить:
+##### 3. Для сохранения последней яроксти после завершения работы добавьте в файл автозапуска DE:
+
+Для Intel:
+
 ```
-ls -l /sys/class/backlight/intel_backlight/brightness
+tee /sys/class/backlight/intel_backlight/brightness < $HOME/.bg > /dev/null
 ```
 
-Если *-rw-rw-rw-* то всё хорошо
+Для amd:
 
-#### 2. Переместить bg.sh в домашнюю директорию и сделать исполняемым
-```
-chmod +x bg.sh
-```
-##### 3. Для сохранения последней яроксти после завершения работы добавьте в файл автозапуска:
 ```
 tee /sys/class/backlight/intel_backlight/brightness < $HOME/.bg > /dev/null
 ```
