@@ -12,9 +12,10 @@ use crossterm::{
     terminal::{self, ClearType},
 };
 
-const BRIGHT_PATH: &str = "/sys/class/backlight/amdgpu_bl0/brightness";
-const MAX_BRIGHT_PATH: &str = "/sys/class/backlight/amdgpu_bl0/max_brightness";
-//const SAVE_FILE: &str = "/home/wan/hello_void/target/x86_64-unknown-linux-musl/release/.bg";
+const BRIGHT_PATH_BL0: &str = "/sys/class/backlight/amdgpu_bl0/brightness";
+const MAX_BRIGHT_PATH_BL0: &str = "/sys/class/backlight/amdgpu_bl0/max_brightness";
+const BRIGHT_PATH_BL1: &str = "/sys/class/backlight/amdgpu_bl1/brightness";
+const MAX_BRIGHT_PATH_BL1: &str = "/sys/class/backlight/amdgpu_bl1/max_brightness";
 
 lazy_static! {
     // Эта переменная вычислится один раз при первом вызове
@@ -32,13 +33,23 @@ struct Config {
     step_small: u32,
 }
 
+fn detect_paths() -> (&'static str, &'static str) {
+    if fs::metadata(BRIGHT_PATH_BL0).is_ok() {
+        (BRIGHT_PATH_BL0, MAX_BRIGHT_PATH_BL0)
+    } else {
+        (BRIGHT_PATH_BL1, MAX_BRIGHT_PATH_BL1)
+    }
+}
+
 fn main() -> io::Result<()> {
 
-    let max_bright = fs::read_to_string(MAX_BRIGHT_PATH)
-        .unwrap_or_else(|_| "255".to_string())
+    let (bright_path, max_bright_path) = detect_paths();
+
+    let max_bright = fs::read_to_string(max_bright_path)
+        .unwrap_or_else(|_| "9600".to_string())
         .trim()
         .parse::<u32>()
-        .unwrap_or(255);
+        .unwrap_or(9600);
 
     let config = Config {
         max_bright,
@@ -46,11 +57,11 @@ fn main() -> io::Result<()> {
         step_small: (max_bright / 100).max(1), // 1%
     };
 
-    let mut current = fs::read_to_string(BRIGHT_PATH)
-        .unwrap_or_else(|_| "128".to_string())
+    let mut current = fs::read_to_string(bright_path)
+        .unwrap_or_else(|_| "500".to_string())
         .trim()
         .parse::<u32>()
-        .unwrap_or(128);
+        .unwrap_or(500);
 
     let mut stdout = io::stdout();
     terminal::enable_raw_mode()?;
@@ -62,7 +73,7 @@ fn main() -> io::Result<()> {
         if let event::Event::Key(KeyEvent { code, .. }) = event::read()? {
             match code {
                 KeyCode::Up => {
-                    // Если на 1, прыгаем ровно на step_large. Если выше — выравниваем по сетке step_large.
+                    // Если на 1, прыгаем ровно на 480. Если выше — выравниваем по сетке 480.
                     let next = if current == 1 { config.step_large } else { current + config.step_large };
                     current = (next / config.step_large * config.step_large).min(config.max_bright);
                 }
@@ -81,7 +92,7 @@ fn main() -> io::Result<()> {
             }
 
             // Записываем в систему
-            let _ = fs::write(BRIGHT_PATH, current.to_string());
+            let _ = fs::write(bright_path, current.to_string());
             let _ = fs::write(&*SAVE_FILE, current.to_string());
         }
     }
