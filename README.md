@@ -27,8 +27,8 @@ sudo ./install.sh
 tee /sys/class/backlight/intel_backlight/brightness < $HOME/.bg > /dev/null
 ```
 
-Для amd:
+Для AMD:
 
 ```
-tee /sys/class/backlight/intel_backlight/brightness < $HOME/.bg > /dev/null
+tee /sys/class/backlight/amdgpu_bl0/brightness < $HOME/.bg > /dev/null
 ```
