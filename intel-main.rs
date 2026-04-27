@@ -1,4 +1,7 @@
 //ИСХОДНЫЙ КОД ДЛЯ INTEL
+use lazy_static::lazy_static;
+use std::env;
+use std::path::PathBuf;
 use std::fs;
 use std::io::{self, Write};
 use crossterm::{
@@ -11,6 +14,17 @@ use crossterm::{
 
 const BRIGHT_PATH: &str = "/sys/class/backlight/intel_backlight/brightness";
 const MAX_BRIGHT_PATH: &str = "/sys/class/backlight/intel_backlight/max_brightness";
+//const SAVE_FILE: &str = "/home/wan/hello_void/target/x86_64-unknown-linux-musl/release/.bg";
+
+lazy_static! {
+    // Эта переменная вычислится один раз при первом вызове
+    static ref SAVE_FILE: PathBuf = {
+        let home = env::var("HOME").unwrap_or_else(|_| ".".into());
+        let mut path = PathBuf::from(home);
+        path.push(".bg");
+        path
+    };
+}
 
 struct Config {
     max_bright: u32,
@@ -19,6 +33,7 @@ struct Config {
 }
 
 fn main() -> io::Result<()> {
+
     let max_bright = fs::read_to_string(MAX_BRIGHT_PATH)
         .unwrap_or_else(|_| "9600".to_string())
         .trim()
@@ -67,6 +82,7 @@ fn main() -> io::Result<()> {
 
             // Записываем в систему
             let _ = fs::write(BRIGHT_PATH, current.to_string());
+            let _ = fs::write(&*SAVE_FILE, current.to_string());
         }
     }
 
@@ -82,8 +98,8 @@ fn draw_ui(stdout: &mut io::Stdout, val: u32, cfg: &Config) -> io::Result<()> {
     let gray_index = (val * 23 / cfg.max_bright) as u8;
     let color_code = 232 + gray_index;
     
-    // Текст белый до 50%, на 50% и выше — черный
-    let text_color = if val >= cfg.max_bright / 2 { Color::Black } else { Color::White };
+    // Текст белый до 50%, выше — черный
+    let text_color = if val <= cfg.max_bright / 2 { Color::White } else { Color::Black };
 
     execute!(
         stdout,
