@@ -14,7 +14,6 @@ use crossterm::{
 
 const BRIGHT_PATH: &str = "/sys/class/backlight/intel_backlight/brightness";
 const MAX_BRIGHT_PATH: &str = "/sys/class/backlight/intel_backlight/max_brightness";
-//const SAVE_FILE: &str = "/home/wan/hello_void/target/x86_64-unknown-linux-musl/release/.bg";
 
 lazy_static! {
     // Эта переменная вычислится один раз при первом вызове
