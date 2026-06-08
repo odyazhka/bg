@@ -1,0 +1,16 @@
+[package]
+name = "bg"
+version = "1.0.0"
+edition = "2021"
+
+[dependencies]
+crossterm = { version = "0.27", features = ["event-stream"] }
+ctrlc = { version = "3.4", features = ["termination"] }
+lazy_static = "1.4"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"
