@@ -19,16 +19,16 @@
 sudo ./install.sh
 ```
 
-### 2. Для сохранения последней яроксти после завершения работы добавьте в файл автозапуска DE:
+### 2. Для сохранения последней яроксти после завершения работы добавьте в файл автозапуска WM:
 
 Для Intel:
 
 ```
-tee /sys/class/backlight/intel_backlight/brightness < $HOME/.bg > /dev/null
+tee /sys/class/backlight/intel_backlight/brightness < .local/bg > /dev/null
 ```
 
 Для AMD:
 
 ```
-tee /sys/class/backlight/amdgpu_bl0/brightness < $HOME/.bg > /dev/null
+tee /sys/class/backlight/amdgpu_bl0/brightness < .local/bg > /dev/null
 ```
